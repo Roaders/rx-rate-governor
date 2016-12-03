@@ -1,0 +1,23 @@
+{
+  "name": "rx-rate-governor",
+  "version": "1.0.0",
+  "description": "Library to help find optimal concurrent items for parallel tasks",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Roaders/rx-rate-governor.git"
+  },
+  "keywords": [
+    "rx",
+    "rxjs"
+  ],
+  "author": "Giles Roadnight",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Roaders/rx-rate-governor/issues"
+  },
+  "homepage": "https://github.com/Roaders/rx-rate-governor#readme"
+}
