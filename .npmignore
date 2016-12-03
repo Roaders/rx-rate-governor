@@ -1,6 +1,8 @@
 node_modules/
 typings/
 src/
+example/
 .vscode/
 typings.json
 tsconfig.json
+environmentalVariables.properties
