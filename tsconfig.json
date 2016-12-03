@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "diagnostics": true,
+        "sourceMap": true,
+        "outDir": "",
+        "declaration": true
+    },
+    "include": [
+        "src/**/*.ts"
+    ],
+    "files": [
+        "node_modules/rx/ts/rx.all.d.ts"
+    ]
+}
