@@ -7,6 +7,8 @@ import RxHttp = require('rx-http-ts');
 import Rx = require('rx');
 const env = require('node-env-file');
 
+import {RateGovernor} from "../lib/index"
+
 const environmentFile = path.join(__dirname,'../environmentVariables.properties' );
 
 console.log(`Checking for environment file at ${environmentFile}`)
@@ -20,6 +22,9 @@ const categoriesUrl = `https://www.googleapis.com/youtube/v3/guideCategories?par
 const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?part=id&categoryId=`
 const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&maxResults=50&channelId=`
 const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=id&id=`;
+
+var loadedCount = 0;
+var loadingCount = 0;
 
 function loadChannelsForCategory(categoryId: string){
     return Rx.Observable.defer(() => {
@@ -48,11 +53,27 @@ function loadVideoDetails(videoId: string){
     })
 }
 
+var loadedCount = 0;
+var loadingCount = 0;
+
+function markLoadStarted(){
+    loadingCount++;
+    logProgress();
+}
+
+function markLoadFinished(){
+    loadingCount--;
+    loadedCount++;
+    logProgress();
+}
+
 function logProgress(newLine:boolean = false){
     const elapsed = new Date().getTime() - startTime.getTime();
     const perItem = Math.round(elapsed/loadedCount);
 
-    var message = `${loadedCount} videos loaded in ${elapsed}ms - ${perItem}ms per item`
+    (<any>process.stdout).clearLine(); 
+
+    var message = `${loadedCount} videos loaded in ${elapsed}ms - ${perItem}ms per item (${loadingCount} currently loading)`
 
     if(!newLine){
         message += "\r";
@@ -60,7 +81,6 @@ function logProgress(newLine:boolean = false){
     } else {
         console.log(message);
     }
-
 }
 
 var startTime: Date;
@@ -79,21 +99,23 @@ var loadVideoArray = RxHttp.getJson<any>(categoriesUrl,true)
     .flatMap(searchResponse => Rx.Observable.from<any>(searchResponse.items))
     .map<string>(video => video.id.videoId)
     .filter(videoId => videoId != null)
-    .take(500)
+    .take(5000)
     .toArray()
     .do(array => {
         startTime = new Date();
         console.log(`${array.length} videos ready to load`)
     });
 
-var loadedCount = 0;
+var videoArray = loadVideoArray
+    .flatMap(videoArray => Rx.Observable.from(videoArray));
 
-loadVideoArray
-    .flatMap(videoArray => Rx.Observable.from(videoArray))
-    .map(categoryId => loadVideoDetails(categoryId))
-    .merge(10)
-    .do(() => loadedCount++)
-    .do(() => logProgress())
+var governor = new RateGovernor(videoArray);
+
+governor.controlledStream
+    .do(() => markLoadStarted())
+    .flatMap(categoryId => loadVideoDetails(categoryId))
+    .do(() => markLoadFinished())
+    .do(() => governor.governRate())
     .subscribe(
         result => {},
         error => {},

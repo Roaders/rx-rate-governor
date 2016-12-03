@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "compile": "tsc",
-    "start": "node example/test.js",
+    "start": "node example/testFileRead.js",
     "launch": "npm run compile && npm start"
   },
   "repository": {
@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/Roaders/rx-rate-governor#readme",
   "dependencies": {
-    "rx": "^4.1.0"
+    "rx": "^4.1.0",
+    "rx-node": "^1.0.2"
   },
   "devDependencies": {
     "node-env-file": "^0.1.8",
