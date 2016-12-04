@@ -56,15 +56,17 @@ function readFile(filePath: string): Rx.Observable<string>{
 
 function logProgress(newLine:boolean = false){
     const elapsed = new Date().getTime() - startTime.getTime();
-    const perItem = Math.round(elapsed/loadedCount);
+    var perItem = Math.round(elapsed/loadedCount);
 
     if(loadedCount === 0){
-        return;
+        perItem = 0;
     }
 
-    (<any>process.stdout).clearLine(); 
+    var message = `${loadedCount} files loaded in ${elapsed}ms - ${perItem}ms per item (${loadingCount} currently loading)`;
 
-    var message = `${loadedCount} files loaded in ${elapsed}ms - ${perItem}ms per item (${loadingCount} currently loading)`
+    if(message.length < lastMessageLength){
+        (<any>process.stdout).clearLine();  
+    }
 
     if(!newLine){
         message += "\r";
@@ -72,8 +74,11 @@ function logProgress(newLine:boolean = false){
     } else {
         console.log(message);
     }
+
+    lastMessageLength = message.length;
 }
 
+var lastMessageLength = 0;
 var loadedCount = 0;
 var loadingCount = 0;
 
@@ -90,13 +95,13 @@ function markLoadFinished(){
 
 var startTime: Date;
 
-console.log("Scanning C:");
+console.log("Scanning V:");
 
-var fileList = loadDirectoryTree("C:")
+var fileList = loadDirectoryTree("T:")
     .flatMap(filePath => loadPathStat(filePath))
     .filter(stat => stat.isFile())
     .map(stat => stat.filePath)
-    .take(10000)
+    .take(1000)
     .toArray()
     .do(array => {
         startTime = new Date();
@@ -106,7 +111,7 @@ var fileList = loadDirectoryTree("C:")
 
 var governor = new RateGovernor(fileList);
 
-governor.controlledStream
+governor.observable
     .do(() => markLoadStarted())
     .flatMap(filePath => readFile(filePath))
     .do(() => markLoadFinished())

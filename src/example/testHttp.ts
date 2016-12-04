@@ -111,7 +111,7 @@ var videoArray = loadVideoArray
 
 var governor = new RateGovernor(videoArray);
 
-governor.controlledStream
+governor.observable
     .do(() => markLoadStarted())
     .flatMap(categoryId => loadVideoDetails(categoryId))
     .do(() => markLoadFinished())
