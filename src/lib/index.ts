@@ -25,11 +25,16 @@ export class RateGovernor<T>{
     private _queuedItems = 0;
     private _inProgress = 0;
     private _increasingCount: boolean = true;
-    private _concurrentCount = 1;
 
     private _lastMeasure: IPerformanceMeasure;
     private _currentMeasure: IPerformanceMeasure;
     private _measureStart: Date;
+
+    private _concurrentCount = 1;
+
+    public get concurrentCount(){
+        return this._concurrentCount;
+    }
 
     public get observable(): Rx.Observable<T>{
         return this._downstreamObservable;
