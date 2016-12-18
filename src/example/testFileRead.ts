@@ -95,9 +95,9 @@ function markLoadFinished(){
 
 var startTime: Date;
 
-console.log("Scanning V:");
+console.log("Scanning C:");
 
-var fileList = loadDirectoryTree("T:")
+var fileList = loadDirectoryTree("c:\\")
     .flatMap(filePath => loadPathStat(filePath))
     .filter(stat => stat.isFile())
     .map(stat => stat.filePath)
