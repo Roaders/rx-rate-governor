@@ -54,7 +54,7 @@ function readFile(filePath: string): Rx.Observable<string>{
         .map(() => filePath);
 }
 
-function logProgress(newLine:boolean = false){
+function logProgress(newLine:boolean = true){
     const elapsed = new Date().getTime() - startTime.getTime();
     var perItem = Math.round(elapsed/loadedCount);
 
@@ -70,9 +70,9 @@ function logProgress(newLine:boolean = false){
 
     if(!newLine){
         message += "\r";
-        process.stdout.write(message);
+        //process.stdout.write(message);
     } else {
-        console.log(message);
+        //console.log(message);
     }
 
     lastMessageLength = message.length;
@@ -84,13 +84,21 @@ var loadingCount = 0;
 
 function markLoadStarted(){
     loadingCount++;
+    console.log(`markLoadStarted:: ${loadingCount}`);
     logProgress();
 }
 
 function markLoadFinished(){
+    const govornerRate = governor.currentItemCount;
+
     loadingCount--;
     loadedCount++;
+    console.log(`markLoadFinished: ${loadingCount}`);
     logProgress();
+
+    if(govornerRate!.inProgress != loadingCount){
+        console.log("DOES NOT MATCH: ${govornerRate!.inProgress} !!!!!!!!!!!!!!!!!!");
+    }
 }
 
 var startTime: Date;
@@ -114,8 +122,8 @@ var governor = new RateGovernor(fileList);
 governor.observable
     .do(() => markLoadStarted())
     .flatMap(filePath => readFile(filePath))
-    .do(() => markLoadFinished())
     .do(() => governor.governRate())
+    .do(() => markLoadFinished())
     .subscribe(
         item => {},
         error => console.log(error),
