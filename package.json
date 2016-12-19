@@ -10,7 +10,7 @@
     "start": "node example/testFileRead.js",
     "pretest": "npm run build",
     "typings": "typings install",
-    "prepublish": "typings",
+    "prepublish": "npm run typings",
     "test": "jasmine"
   },
   "repository": {
