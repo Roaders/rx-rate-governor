@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Roaders/rx-rate-governor.svg?branch=master)](https://travis-ci.org/Roaders/rx-rate-governor)
+
 # rx-rate-governor
 Library to help find optimal concurrent items for parallel tasks
 
