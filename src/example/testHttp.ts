@@ -7,7 +7,7 @@ import RxHttp = require('rx-http-ts');
 import Rx = require('rx');
 const env = require('node-env-file');
 
-import {RateGovernor} from "../lib/index"
+import {RateGovernor} from "../lib/rateGovornor"
 
 const environmentFile = path.join(__dirname,'../environmentVariables.properties' );
 

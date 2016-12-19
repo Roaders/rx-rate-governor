@@ -8,9 +8,17 @@ interface IPerformanceMeasure{
     msPerItem?: number;
 }
 
+export interface ITimer{
+    getTime(): number;
+}
+
 export class RateGovernor<T>{
 
-    constructor(observable: Rx.Observable<T>){
+    constructor(observable: Rx.Observable<T>, private _timer?: ITimer){
+        if(!this._timer){
+            this._timer = {getTime: () => new Date().getTime()};
+        }
+
         this._controlled = observable
             .do(() => this.handleItemFromSource())
             .controlled();
@@ -28,9 +36,13 @@ export class RateGovernor<T>{
 
     private _lastMeasure: IPerformanceMeasure;
     private _currentMeasure: IPerformanceMeasure;
-    private _measureStart: Date;
+    private _measureStart: number;
 
     private _concurrentCount = 1;
+
+    public get inProgress(): number{
+        return this._inProgress;
+    }
 
     public get concurrentCount(){
         return this._concurrentCount;
@@ -46,9 +58,9 @@ export class RateGovernor<T>{
 
         //work out how many items to request to maintain our number of concurrent items
         const batchRemainingItems = this._currentMeasure.totalItems - this._currentMeasure.itemCount;
-        const requestCount = Math.min(this._concurrentCount - this._inProgress, batchRemainingItems, this._queuedItems);
+        const requestCount = Math.min(this._concurrentCount - this._inProgress, batchRemainingItems - this.inProgress, this._queuedItems);
 
-       //console.log(`${this._inProgress} in progress, ${this._concurrentCount} concurrent, ${requestCount} requested, ${this._queuedItems} queued`)
+       //console.log(`${this._inProgress} in progress, ${this._concurrentCount} concurrent, ${requestCount} requested, ${batchRemainingItems} batchRemainingItems`)
 
         if(requestCount > 0){
             this.request(requestCount);
@@ -86,10 +98,10 @@ export class RateGovernor<T>{
 
     private completeMeasureBatch(){
         if(this._currentMeasure.itemCount === this._currentMeasure.totalItems){
-            const elapsed = new Date().getTime() - this._measureStart.getTime();
+            const elapsed = this._timer.getTime() - this._measureStart;
             this._currentMeasure.msPerItem = Math.round(elapsed/this._currentMeasure.itemCount);
 
-            //console.log(`Batch complete: ${this._currentMeasure.itemCount} in ${elapsed}ms (${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
+            //console.log(`Batch complete: ${this._currentMeasure.itemCount} in ${elapsed}ms (${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent (${this.inProgress} in progress)`);
 
             //if this batch was slower reverse our direction
             if(this._lastMeasure && this._lastMeasure.msPerItem <= this._currentMeasure.msPerItem){
@@ -120,7 +132,7 @@ export class RateGovernor<T>{
             totalItems: this._concurrentCount*10,
             concurrentCount: this._concurrentCount
         };
-        this._measureStart = new Date();
+        this._measureStart = this._timer.getTime();
     }
 
 

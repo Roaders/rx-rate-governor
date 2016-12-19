@@ -8,7 +8,7 @@ import RxNode = require('rx-node');
 import Rx = require('rx');
 const env = require('node-env-file');
 
-import {RateGovernor} from "../lib/index"
+import {RateGovernor} from "../lib/rateGovornor"
 
 interface IFileStats extends fs.Stats{
     filePath: string;

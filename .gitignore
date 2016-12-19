@@ -2,3 +2,7 @@ node_modules/
 typings/
 /example/
 /lib/
+/test/
+index.d.ts
+index.js
+index.js.map
