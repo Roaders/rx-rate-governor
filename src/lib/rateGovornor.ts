@@ -1,5 +1,6 @@
 
 import Rx = require('rx');
+import {IRate} from "stream-item-timer";
 
 interface IPerformanceMeasure{
     itemCount: number;
@@ -49,6 +50,22 @@ export class RateGovernor<T>{
 
     private _concurrentCount = 1;
 
+    public get currentRate(): IRate{
+        var measure: IPerformanceMeasure;
+
+        if(this._currentMeasure && this._currentMeasure.msPerItem != undefined){
+            measure = this._currentMeasure;
+        } else {
+            measure = this._lastMeasure;
+        }
+
+        if(measure){
+            return  {count: measure.itemCount, msPerItem: measure.msPerItem ? measure.msPerItem: NaN}
+        }
+
+        return  {count: 0, msPerItem: NaN};
+    }
+
     public get inProgress(): number{
         return this._inProgress;
     }
@@ -64,6 +81,9 @@ export class RateGovernor<T>{
     public governRate(){
         this._inProgress--
         this._currentMeasure.itemCount++;
+        
+        const elapsed = this._timer.getTime() - this._measureStart;
+        this._currentMeasure.msPerItem = Math.round(elapsed/this._currentMeasure.itemCount);
 
         //work out how many items to request to maintain our number of concurrent items
         const batchRemainingItems = this._currentMeasure.totalItems - this._currentMeasure.itemCount;
@@ -107,8 +127,6 @@ export class RateGovernor<T>{
 
     private completeMeasureBatch(){
         if(this._currentMeasure.itemCount === this._currentMeasure.totalItems){
-            const elapsed = this._timer.getTime() - this._measureStart;
-            this._currentMeasure.msPerItem = Math.round(elapsed/this._currentMeasure.itemCount);
 
             //console.log(`Batch complete: ${this._currentMeasure.itemCount} in ${elapsed}ms (${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent (${this.inProgress} in progress)`);
 

@@ -24,8 +24,9 @@ describe("Rate Govornor",() => {
         it("should initally emit one item",() => {
             subscribe();
 
+            assertRate(0,NaN,1,80,1);
+
             expect(govornor.concurrentCount).toEqual(1);
-            expect(govornor.inProgress).toEqual(1);
             expect(emittedItems).toEqual([0]);
         });
 
@@ -33,8 +34,8 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount <= 9; completeCount++){
+                assertRate(completeCount,completeCount === 0 ? NaN : 1000,1,80,completeCount+1);
                 expect(emittedItems).toEqual(range(0,completeCount));
-                expect(govornor.inProgress).toEqual(1);
                 expect(govornor.concurrentCount).toEqual(1);
                 completeItems();
             }
@@ -47,7 +48,7 @@ describe("Rate Govornor",() => {
                 completeItems();
             };
 
-            expect(govornor.inProgress).toEqual(2);
+            assertRate(10,1000,2,80,10);
             expect(govornor.concurrentCount).toEqual(2);
             expect(emittedItems).toEqual(range(0,11));
         });
@@ -56,14 +57,20 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
+                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
                 completeItems();
             };
 
-            for(let completeCount = 0; completeCount < 10; completeCount++){
+            assertRate(10,1000,2,80,10);
+            completeItems(2);
+
+            for(let completeCount = 1; completeCount < 10; completeCount++){
+                assertRate(completeCount*2,500,2,80,completeCount*2+10);
                 completeItems(2);
             };
 
-            expect(govornor.inProgress).toEqual(3);
+            assertRate(20,500,3,80,30);
+
             expect(govornor.concurrentCount).toEqual(3);
             expect(emittedItems).toEqual(range(0,32));
         });
@@ -73,14 +80,20 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
+                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
                 completeItems();
             };
 
-            for(let completeCount = 0; completeCount < 10; completeCount++){
+            assertRate(10,1000,2,80,10);
+            completeItems(2,3000);
+
+            for(let completeCount = 1; completeCount < 10; completeCount++){
+                assertRate(completeCount*2,1500,2,80,completeCount*2+10);
                 completeItems(2, 3000);
             };
 
-            expect(govornor.inProgress).toEqual(1);
+            assertRate(20,1500,1,80,30);
+
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
         });
@@ -90,18 +103,33 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
+                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
                 completeItems();
             };
 
-            for(let completeCount = 0; completeCount < 10; completeCount++){
+            assertRate(10,1000,2,80,10);
+            completeItems(2,2000);
+
+            for(let completeCount = 1; completeCount < 10; completeCount++){
+                assertRate(completeCount*2,1000,2,80,completeCount*2+10);
                 completeItems(2,2000);
             };
 
-            expect(govornor.inProgress).toEqual(1);
+            assertRate(20,1000,1,80,30);
+
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
         });
     });
+
+    function assertRate(count: number, 
+        msPerItem: number, 
+        inProgress: number, 
+        total: number, 
+        complete: number){
+        expect(govornor.currentRate).toEqual({msPerItem: msPerItem, count: count});
+        expect(govornor.inProgress).toEqual(inProgress);
+    }
 
     function range(start: number, end: number): number[]{
         const range: number[] = [];
