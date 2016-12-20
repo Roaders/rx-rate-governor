@@ -12,6 +12,14 @@ export interface ITimer{
     getTime(): number;
 }
 
+export interface IAverageRate{
+    getAverage(count?:number):number;   
+}
+
+class RateWithExistingTotal(existingTotal: number){
+    
+}
+
 export class RateGovernor<T>{
 
     constructor(observable: Rx.Observable<T>, private _timer?: ITimer){
