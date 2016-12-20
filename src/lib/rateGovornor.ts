@@ -16,8 +16,9 @@ export interface IAverageRate{
     getAverage(count?:number):number;   
 }
 
-class RateWithExistingTotal(existingTotal: number){
-    
+class RateWithExistingTotal{
+    constructor(existingTotal: number){
+    }
 }
 
 export class RateGovernor<T>{
