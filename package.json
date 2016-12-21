@@ -6,8 +6,11 @@
   "typings": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prestart": "npm run build",
-    "start": "node example/testFileRead.js",
+    "prestartFileRead": "npm run build",
+    "prestartHttp": "npm run build",
+    "startFileRead": "node example/testFileRead.js",
+    "startHttp": "node example/testHttp.js",
+    "start": "npm run startFileRead",
     "pretest": "npm run build",
     "typings": "typings install",
     "prepublish": "npm run typings",
