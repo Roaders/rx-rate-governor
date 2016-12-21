@@ -44,6 +44,7 @@ export class RateGovernor<T>{
     private _inProgress = 0;
     private _increasingCount: boolean = true;
 
+    private _incompleteMeasure: IPerformanceMeasure;
     private _lastMeasure: IPerformanceMeasure;
     private _currentMeasure: IPerformanceMeasure;
     private _measureStart: number;
@@ -56,7 +57,7 @@ export class RateGovernor<T>{
         if(this._currentMeasure && this._currentMeasure.msPerItem != undefined){
             measure = this._currentMeasure;
         } else {
-            measure = this._lastMeasure;
+            measure = this._lastMeasure ? this._lastMeasure : this._incompleteMeasure;
         }
 
         if(measure){
@@ -89,7 +90,7 @@ export class RateGovernor<T>{
         const batchRemainingItems = this._currentMeasure.totalItems - this._currentMeasure.itemCount;
         const requestCount = Math.min(this._concurrentCount - this._inProgress, batchRemainingItems - this.inProgress, this._queuedItems);
 
-       //console.log(`${this._inProgress} in progress, ${this._concurrentCount} concurrent, ${requestCount} requested, ${batchRemainingItems} batchRemainingItems`)
+       //console.log(`${this._inProgress} in progress, ${this._concurrentCount} concurrent, ${requestCount} requested, ${batchRemainingItems} batchRemainingItems, ${this._queuedItems} Queued items`)
 
         if(requestCount > 0){
             this.request(requestCount);
@@ -126,9 +127,11 @@ export class RateGovernor<T>{
     }
 
     private completeMeasureBatch(){
+        this._incompleteMeasure = null;
+        
         if(this._currentMeasure.itemCount === this._currentMeasure.totalItems){
 
-            //console.log(`Batch complete: ${this._currentMeasure.itemCount} in ${elapsed}ms (${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent (${this.inProgress} in progress)`);
+            //console.log(`Batch complete: ${this._currentMeasure.itemCount}  (@${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent (${this.inProgress} in progress)`);
 
             //if this batch was slower reverse our direction
             if(this._lastMeasure && this._lastMeasure.msPerItem <= this._currentMeasure.msPerItem){
@@ -145,7 +148,9 @@ export class RateGovernor<T>{
             //clear values for next batch
             this._lastMeasure = this._currentMeasure;
         } else {
-            //console.log(`incomplete batch, not saving`)
+            //console.log(`incomplete batch, not saving`);
+            this._incompleteMeasure = this._currentMeasure;
+            this._lastMeasure = null;
         }
 
         this._currentMeasure = null;

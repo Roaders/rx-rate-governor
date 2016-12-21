@@ -14,7 +14,7 @@ describe("Rate Govornor",() => {
         emittedItems = [];
     })
 
-    describe("when source is cold", () => {
+    describe("when items available before subscribe", () => {
 
         beforeEach(() => {
             const source = Rx.Observable.range(0,80);
@@ -120,6 +120,58 @@ describe("Rate Govornor",() => {
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
         });
+    });
+
+    describe("when items not avaiable before subscribe", () =>{
+
+        let source: Rx.Subject<number[]>;
+
+        beforeEach(() => {
+            emittedItems = [];
+            source = new Rx.Subject<number[]>();
+            const numberSource = source.flatMap(itemArray => Rx.Observable.from(itemArray));
+            govornor = new RateGovernor(numberSource,timer);
+        })
+
+        it("when source emitts items first item immediattely emmitted by govornor", () => {
+            subscribe();
+
+            assertRate(0,NaN,0,80,1);
+            expect(govornor.concurrentCount).toEqual(1);
+            expect(emittedItems).toEqual([]);
+
+            source.onNext(range(0,80));
+
+            assertRate(0,NaN,1,80,1);
+            expect(govornor.concurrentCount).toEqual(1);
+            expect(emittedItems).toEqual([0]);
+        });
+
+        it("when not enough items to complete batch concurrency does not change", () => {
+            subscribe();
+
+            source.onNext(range(0,7));
+
+            for(let completeCount = 0; completeCount < 8; completeCount++){
+                assertRate(completeCount,completeCount>0?1000:NaN,1,8,completeCount);
+                completeItems();
+            };
+
+            assertRate(8,1000,0,8,8);
+
+            source.onNext(range(8,15));
+
+            completeItems();
+
+            for(let completeCount = 1; completeCount < 8; completeCount++){
+                assertRate(completeCount,completeCount>0?1000:NaN,1,16,completeCount+8);
+                completeItems();
+            };
+                
+           assertRate(8,1000,0,16,16);
+
+        });
+
     });
 
     function assertRate(count: number, 
