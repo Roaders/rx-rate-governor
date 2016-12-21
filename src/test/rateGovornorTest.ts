@@ -120,6 +120,28 @@ describe("Rate Govornor",() => {
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
         });
+
+        it("if small batches are faster concurrent count does not drop below 0", () => {
+            subscribe();
+
+            for(let completeCount = 0; completeCount < 10; completeCount++){
+                completeItems();
+            };
+
+            for(let completeCount = 0; completeCount < 10; completeCount++){
+                completeItems(2, 3000);
+            };
+
+            assertRate(20,1500,1,80,30);
+            expect(govornor.concurrentCount).toEqual(1);
+
+            for(let completeCount = 0; completeCount < 10; completeCount++){
+                completeItems(1,500);
+            };
+
+            assertRate(10,500,1,80,40);
+            expect(govornor.concurrentCount).toEqual(1);
+        });
     });
 
     describe("when items not avaiable before subscribe", () =>{
