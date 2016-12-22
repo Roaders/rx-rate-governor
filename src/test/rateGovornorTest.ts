@@ -1,6 +1,7 @@
 
 import Rx = require('rx');
 import {RateGovernor, ITimer} from "../lib/rateGovornor"
+import {IStreamCounterInfo,IRate} from "stream-item-timer";
 
 describe("Rate Govornor",() => {
 
@@ -24,7 +25,7 @@ describe("Rate Govornor",() => {
         it("should initally emit one item",() => {
             subscribe();
 
-            assertRate(0,NaN,1,80,1);
+            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 1, total: 80, complete: 0});
 
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual([0]);
@@ -34,7 +35,7 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount <= 9; completeCount++){
-                assertRate(completeCount,completeCount === 0 ? NaN : 1000,1,80,completeCount+1);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1});
                 expect(emittedItems).toEqual(range(0,completeCount));
                 expect(govornor.concurrentCount).toEqual(1);
                 completeItems();
@@ -48,7 +49,7 @@ describe("Rate Govornor",() => {
                 completeItems();
             };
 
-            assertRate(10,1000,2,80,10);
+            assertState({rate:{count: 10, msPerItem: 1000}, inProgress: 2, total: 80, complete: 10});
             expect(govornor.concurrentCount).toEqual(2);
             expect(emittedItems).toEqual(range(0,11));
         });
@@ -57,19 +58,19 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1});
                 completeItems();
             };
 
-            assertRate(10,1000,2,80,10);
+            assertState({rate:{count: 10, msPerItem: 1000}, inProgress: 2, total: 80, complete: 10});
             completeItems(2);
 
             for(let completeCount = 1; completeCount < 10; completeCount++){
-                assertRate(completeCount*2,500,2,80,completeCount*2+10);
+                assertState({rate:{count: completeCount*2, msPerItem: 500}, inProgress: 2, total: 80, complete: completeCount*2+10});
                 completeItems(2);
             };
 
-            assertRate(20,500,3,80,30);
+            assertState({rate:{count: 20, msPerItem: 500}, inProgress: 3, total: 80, complete: 30});
 
             expect(govornor.concurrentCount).toEqual(3);
             expect(emittedItems).toEqual(range(0,32));
@@ -80,19 +81,19 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1});
                 completeItems();
             };
 
-            assertRate(10,1000,2,80,10);
+            assertState({rate:{count: 10, msPerItem: 1000}, inProgress: 2, total: 80, complete: 10});
             completeItems(2,3000);
 
             for(let completeCount = 1; completeCount < 10; completeCount++){
-                assertRate(completeCount*2,1500,2,80,completeCount*2+10);
+                assertState({rate:{count: completeCount*2, msPerItem: 1500}, inProgress: 2, total: 80, complete: completeCount*2+10});
                 completeItems(2, 3000);
             };
 
-            assertRate(20,1500,1,80,30);
+            assertState({rate:{count: 20, msPerItem: 1500}, inProgress: 1, total: 80, complete: 30});
 
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
@@ -103,19 +104,19 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertRate(completeCount,completeCount>0?1000:NaN,1,80,completeCount);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1});
                 completeItems();
             };
 
-            assertRate(10,1000,2,80,10);
+            assertState({rate:{count: 10, msPerItem: 1000}, inProgress: 2, total: 80, complete: 10});
             completeItems(2,2000);
 
             for(let completeCount = 1; completeCount < 10; completeCount++){
-                assertRate(completeCount*2,1000,2,80,completeCount*2+10);
+                assertState({rate:{count: completeCount*2, msPerItem: 1000}, inProgress: 2, total: 80, complete: completeCount*2+10});
                 completeItems(2,2000);
             };
 
-            assertRate(20,1000,1,80,30);
+            assertState({rate:{count: 20, msPerItem: 1000}, inProgress: 1, total: 80, complete: 30});
 
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual(range(0,30));
@@ -132,14 +133,14 @@ describe("Rate Govornor",() => {
                 completeItems(2, 3000);
             };
 
-            assertRate(20,1500,1,80,30);
+            assertState({rate:{count: 20, msPerItem: 1500}, inProgress: 1, total: 80, complete: 30});
             expect(govornor.concurrentCount).toEqual(1);
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
                 completeItems(1,500);
             };
 
-            assertRate(10,500,1,80,40);
+            assertState({rate:{count: 10, msPerItem: 500}, inProgress: 1, total: 80, complete: 40});
             expect(govornor.concurrentCount).toEqual(1);
         });
     });
@@ -155,16 +156,16 @@ describe("Rate Govornor",() => {
             govornor = new RateGovernor(numberSource,timer);
         })
 
-        it("when source emitts items first item immediattely emmitted by govornor", () => {
+        it("when source emits items first item immediattely emmitted by govornor", () => {
             subscribe();
 
-            assertRate(0,NaN,0,80,1);
+            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 0, total: 80, complete: 0});
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual([]);
 
             source.onNext(range(0,80));
 
-            assertRate(0,NaN,1,80,1);
+            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 1, total: 80, complete: 1});
             expect(govornor.concurrentCount).toEqual(1);
             expect(emittedItems).toEqual([0]);
         });
@@ -175,34 +176,35 @@ describe("Rate Govornor",() => {
             source.onNext(range(0,7));
 
             for(let completeCount = 0; completeCount < 8; completeCount++){
-                assertRate(completeCount,completeCount>0?1000:NaN,1,8,completeCount);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 8, complete: completeCount});
                 completeItems();
             };
 
-            assertRate(8,1000,0,8,8);
+            assertState({rate:{count: 8, msPerItem: 1000}, inProgress: 0, total: 8, complete: 8});
 
             source.onNext(range(8,15));
 
             completeItems();
 
             for(let completeCount = 1; completeCount < 8; completeCount++){
-                assertRate(completeCount,completeCount>0?1000:NaN,1,16,completeCount+8);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 16, complete: completeCount+8});
                 completeItems();
             };
-                
-           assertRate(8,1000,0,16,16);
+
+            assertState({rate:{count: 8, msPerItem: 1000}, inProgress: 0, total: 16, complete: 16});
 
         });
 
     });
 
-    function assertRate(count: number, 
-        msPerItem: number, 
-        inProgress: number, 
-        total: number, 
-        complete: number){
-        expect(govornor.currentRate).toEqual({msPerItem: msPerItem, count: count});
-        expect(govornor.inProgress).toEqual(inProgress);
+    function assertState(state: IStreamCounterInfo){
+        const expectedRate: IRate = {
+            count: state.rate.count, 
+            msPerItem: state.rate.count === 0 ? NaN : state.rate.msPerItem
+        };
+
+        expect(govornor.currentRate).toEqual(expectedRate);
+        expect(govornor.inProgress).toEqual(state.inProgress);
     }
 
     function range(start: number, end: number): number[]{
