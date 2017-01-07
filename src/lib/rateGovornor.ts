@@ -43,7 +43,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
     }
 
     get inProgress(): number{
-        return this._measure ? this._measure.counter.inProgress : 0;
+        return this._currentMeasure ? this._currentMeasure.counter.inProgress : 0;
     }
 
     get total(): number{
@@ -77,7 +77,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
         this._currentMeasure.counter.itemComplete();
 
-       //console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
+       console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
 
        this.request();
     }
@@ -99,9 +99,12 @@ export class RateGovernor<T> implements IStreamCounterInfo{
     }
 
     private handleRequestedItemReceived(){
-        //console.log(`requested item received`)
+        if(!this._currentMeasure){
+            throw new Error("RateGovernor: Requested item received but no currentMeasure");
+        }
         this._notStartedCounter.itemComplete();
-        this._currentMeasure!.counter.newItem();
+        this._currentMeasure.counter.newItem();
+        //console.log(`requested item received. InProgress: ${this._currentMeasure.counter.inProgress}`)
     }
 
     private request(){
@@ -127,8 +130,8 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
         if(this._currentMeasure && this._currentMeasure.counter.complete >= this._currentMeasure!.totalItems && this._currentMeasure.counter.inProgress === 0){
 
-            //console.log("##################################################################################################");
-            //console.log(`Batch complete: ${this._currentMeasure.counter.complete}/${this._currentMeasure.counter.total} (progress: ${this._currentMeasure.counter.inProgress}) (${this._currentMeasure.counter.rate.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
+            console.log("##################################################################################################");
+            console.log(`Batch complete: ${this._currentMeasure.counter.complete}/${this._currentMeasure.counter.total} (progress: ${this._currentMeasure.counter.inProgress}) (${this._currentMeasure.counter.rate.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
 
             const lastRate = this._lastMeasure ? this._lastMeasure.counter.rate : null;
             const currentRate = this._currentMeasure.counter.rate;
@@ -138,26 +141,26 @@ export class RateGovernor<T> implements IStreamCounterInfo{
                 (this._increasingCount && lastRate.msPerItem <= currentRate.msPerItem) || (!this._increasingCount && lastRate.msPerItem < currentRate.msPerItem)
             )){
                 this._increasingCount = !this._increasingCount;
-                //console.log(`swapping direction. increasing: ${this._increasingCount}`);
+                console.log(`swapping direction. increasing: ${this._increasingCount}`);
             }
 
             //update number of concurrent items
             this._concurrentCount = this._increasingCount ? this._concurrentCount+1 : this._concurrentCount-1;
             this._concurrentCount = Math.max(1,this._concurrentCount);
 
-            //console.log(`new concurrent count: ${this._concurrentCount}`);
+            console.log(`new concurrent count: ${this._concurrentCount}`);
 
             //clear values for next batch
             this._lastMeasure = this._currentMeasure;
         } else {
-            //console.log(`incomplete batch, not saving`)
+            console.log(`incomplete batch, not saving`)
         }
 
         this.beginMeasureBatch();
     }
 
     private beginMeasureBatch(){
-        //console.log(`new batch: ${this._concurrentCount}`);
+        console.log(`new batch: ${this._concurrentCount}`);
         this._currentMeasure = {
             totalItems: this._concurrentCount*10,
             counter: new StreamCounter(this._progressCallback,this._timer)
