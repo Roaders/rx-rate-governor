@@ -1,7 +1,7 @@
 
 import Rx = require('rx');
-import {RateGovernor, ITimer} from "../lib/rateGovornor"
-import {IStreamCounterInfo,IRate} from "stream-item-timer";
+import {RateGovernor} from "../lib/rateGovornor"
+import {IStreamCounterInfo,IRate,ITimer} from "stream-item-timer";
 
 describe("Rate Govornor",() => {
 
@@ -9,7 +9,7 @@ describe("Rate Govornor",() => {
     let emittedItems: number[];
     let currentTime = 1000;
 
-    let timer: ITimer = {getTime: () => currentTime};
+    let timer: ITimer = {getTime: (): number => currentTime};
 
     beforeEach(() => {
         emittedItems = [];
@@ -19,7 +19,7 @@ describe("Rate Govornor",() => {
 
         beforeEach(() => {
             const source = Rx.Observable.range(0,80);
-            govornor = new RateGovernor(source,timer);
+            govornor = new RateGovernor(source,undefined,timer);
         });
 
         it("should initally emit one item",() => {
@@ -141,7 +141,7 @@ describe("Rate Govornor",() => {
             emittedItems = [];
             source = new Rx.Subject<number[]>();
             const numberSource = source.flatMap(itemArray => Rx.Observable.from(itemArray));
-            govornor = new RateGovernor(numberSource,timer);
+            govornor = new RateGovernor(numberSource,undefined,timer);
         })
 
         it("when source emits items first item immediattely emmitted by govornor", () => {
@@ -189,7 +189,7 @@ describe("Rate Govornor",() => {
             msPerItem: state.rate.count === 0 ? NaN : state.rate.msPerItem
         };
 
-        expect(govornor.currentRate).toEqual(expectedRate);
+        expect(govornor.rate).toEqual(expectedRate);
         expect(govornor.inProgress).toEqual(state.inProgress);
         expect(govornor.concurrentCount).toEqual(concurrentCount);
     }
