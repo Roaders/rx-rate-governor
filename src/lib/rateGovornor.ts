@@ -1,75 +1,64 @@
 
 import Rx = require('rx');
-import {IRate} from "stream-item-timer";
+import {StreamCounter, IStreamCounterInfo, IRate, ITimer} from "stream-item-timer"
 
 interface IPerformanceMeasure{
-    itemCount: number;
     totalItems: number;
-    concurrentCount: number;
-    msPerItem?: number;
+    counter: StreamCounter;
 }
 
-export interface ITimer{
-    getTime(): number;
-}
+export class RateGovernor<T> implements IStreamCounterInfo{
 
-export interface IAverageRate{
-    getAverage(count?:number):number;   
-}
+    //  Constructor
 
-class RateWithExistingTotal{
-    constructor(existingTotal: number){
-    }
-}
-
-export class RateGovernor<T>{
-
-    constructor(observable: Rx.Observable<T>, private _timer?: ITimer){
-        if(!this._timer){
-            this._timer = {getTime: () => new Date().getTime()};
-        }
+    constructor(observable: Rx.Observable<T>, 
+        private _progressCallback?: () => void, 
+        private _timer?: ITimer){
 
         this._controlled = observable
             .do(() => this.handleItemFromSource())
             .controlled();
 
+        this._notStartedCounter = new StreamCounter(_progressCallback);
+        this._completeCounter = new StreamCounter(_progressCallback);
+
         this._downstreamObservable = this._controlled.do(() => this.handleRequestedItemReceived())
     }
 
-    private _firstItemRecieved: boolean;
+    //  Private Variables
+
+    private _notStartedCounter: StreamCounter;
+    private _completeCounter: StreamCounter;
+
     private _controlled: Rx.ControlledObservable<T>;
     private _downstreamObservable: Rx.Observable<T>;
 
-    private _queuedItems = 0;
-    private _inProgress = 0;
     private _increasingCount: boolean = true;
 
-    private _incompleteMeasure: IPerformanceMeasure;
-    private _lastMeasure: IPerformanceMeasure;
-    private _currentMeasure: IPerformanceMeasure;
-    private _measureStart: number;
+    private _incompleteMeasure: IPerformanceMeasure | null;
+    private _lastMeasure: IPerformanceMeasure | null;
+    private _currentMeasure: IPerformanceMeasure | null;
+
+    //  Properties
+
+    get rate(): IRate{
+        let measure = this._measure ? this._measure : this._incompleteMeasure
+        return measure ? measure.counter.rate : {count: 0, msPerItem: NaN};
+    }
+
+    get inProgress(): number{
+        return this._currentMeasure ? this._currentMeasure.counter.inProgress : 0;
+    }
+
+    get total(): number{
+        return this._completeCounter.total
+    }
+
+    get complete(): number{
+        return this._completeCounter.complete;
+    }
 
     private _concurrentCount = 1;
-
-    public get currentRate(): IRate{
-        var measure: IPerformanceMeasure;
-
-        if(this._currentMeasure && this._currentMeasure.msPerItem != undefined){
-            measure = this._currentMeasure;
-        } else {
-            measure = this._lastMeasure ? this._lastMeasure : this._incompleteMeasure;
-        }
-
-        if(measure){
-            return  {count: measure.itemCount, msPerItem: measure.msPerItem ? measure.msPerItem: NaN}
-        }
-
-        return  {count: 0, msPerItem: NaN};
-    }
-
-    public get inProgress(): number{
-        return this._inProgress;
-    }
 
     public get concurrentCount(){
         return this._concurrentCount;
@@ -79,62 +68,86 @@ export class RateGovernor<T>{
         return this._downstreamObservable;
     }
 
+    //  Public Functions
+
     public governRate(){
-        this._inProgress--
-        this._currentMeasure.itemCount++;
-        
-        const elapsed = this._timer.getTime() - this._measureStart;
-        this._currentMeasure.msPerItem = Math.round(elapsed/this._currentMeasure.itemCount);
-
-        //work out how many items to request to maintain our number of concurrent items
-        const batchRemainingItems = this._currentMeasure.totalItems - this._currentMeasure.itemCount;
-        const requestCount = Math.min(this._concurrentCount - this._inProgress, batchRemainingItems - this.inProgress, this._queuedItems);
-
-       //console.log(`${this._inProgress} in progress, ${this._concurrentCount} concurrent, ${requestCount} requested, ${batchRemainingItems} batchRemainingItems, ${this._queuedItems} Queued items`)
-
-        if(requestCount > 0){
-            this.request(requestCount);
-        } else if(batchRemainingItems === 0 || this._queuedItems === 0){
-            //finished this batch of items, finalise measurements
-            this.completeMeasureBatch();
-            this.request(this._concurrentCount);
+        if(!this._currentMeasure){
+            throw new Error(`No current measure defined`);
         }
+
+        this._currentMeasure.counter.itemComplete();
+        this._completeCounter.itemComplete();
+
+       //console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
+
+       this.request();
+    }
+
+    //  Private Functions
+
+    private get _measure(): IPerformanceMeasure | null {
+        if(this._currentMeasure && this._currentMeasure.counter.rate.count > 0){
+            return this._currentMeasure;
+        }
+        
+        return this._lastMeasure;
     }
 
     private handleItemFromSource(){
-        if(!this._firstItemRecieved){
-            this._firstItemRecieved = true;
-            this.request(this._concurrentCount);
-        }
+        this._notStartedCounter.newItem();
+        this._completeCounter.newItem();
 
-        this._queuedItems++;
+        this.request();
     }
 
     private handleRequestedItemReceived(){
-        //console.log(`requested item received`)
-        this._inProgress++;
-        this._queuedItems--;
+        if(!this._currentMeasure){
+            console.error("RateGovernor: Requested item received but no currentMeasure");
+            throw new Error("RateGovernor: Requested item received but no currentMeasure");
+        }
+        this._notStartedCounter.itemComplete();
+        this._currentMeasure.counter.newItem();
+        //console.log(`requested item received. InProgress: ${this._currentMeasure.counter.inProgress}`)
     }
 
-    private request(count: number){
+    private request(){
         if(!this._currentMeasure){
             this.beginMeasureBatch();
         }
 
-        //console.log(`Requesting ${count}`)
+        const inProgress = this._currentMeasure!.counter.inProgress;
+        //work out how many items to request to maintain our number of concurrent items
+        const batchRemainingItems = this._currentMeasure!.totalItems - this._currentMeasure!.counter.complete;
+        const requestCount = Math.min(this._concurrentCount - inProgress, batchRemainingItems - inProgress, this._notStartedCounter.inProgress);
 
-        this._controlled.request(count);
+        if(requestCount > 0){
+            //console.log(`Requesting ${requestCount}`);
+            this._controlled.request(requestCount);
+        } else if(batchRemainingItems === 0 || this._currentMeasure!.counter.inProgress === 0){
+            //finished this batch of items, finalise measurements
+            this.completeMeasureBatch();
+
+            if(this._notStartedCounter.inProgress > 0){
+                //console.log(`Requesting new concurrent count: ${requestCount} (not started: ${this._notStartedCounter.inProgress})`);
+                this.beginMeasureBatch();
+                this._controlled.request(this._concurrentCount);
+            }
+        }
     }
 
     private completeMeasureBatch(){
-        this._incompleteMeasure = null;
-        
-        if(this._currentMeasure.itemCount === this._currentMeasure.totalItems){
+        if(this._currentMeasure && this._currentMeasure.counter.complete >= this._currentMeasure.totalItems && this._currentMeasure.counter.inProgress === 0){
 
-            //console.log(`Batch complete: ${this._currentMeasure.itemCount}  (@${this._currentMeasure.msPerItem}ms/item) ${this._concurrentCount} concurrent (${this.inProgress} in progress)`);
+            //console.log("##################################################################################################");
+            //console.log(`Batch complete: ${this._currentMeasure.counter.complete}/${this._currentMeasure.counter.total} (progress: ${this._currentMeasure.counter.inProgress}) (${this._currentMeasure.counter.rate.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
+
+            const lastRate = this._lastMeasure ? this._lastMeasure.counter.rate : null;
+            const currentRate = this._currentMeasure.counter.rate;
 
             //if this batch was slower reverse our direction
-            if(this._lastMeasure && this._lastMeasure.msPerItem <= this._currentMeasure.msPerItem){
+            if(lastRate && (
+                (this._increasingCount && lastRate.msPerItem <= currentRate.msPerItem) || (!this._increasingCount && lastRate.msPerItem < currentRate.msPerItem)
+            )){
                 this._increasingCount = !this._increasingCount;
                 //console.log(`swapping direction. increasing: ${this._increasingCount}`);
             }
@@ -147,25 +160,21 @@ export class RateGovernor<T>{
 
             //clear values for next batch
             this._lastMeasure = this._currentMeasure;
+            this._incompleteMeasure = null;
         } else {
-            //console.log(`incomplete batch, not saving`);
+            //console.log(`incomplete batch, saving incompleteMeasure: ${this._currentMeasure} complete: ${this._currentMeasure!.counter.complete} total: ${this._currentMeasure!.totalItems} inProgress: ${this._currentMeasure!.counter.inProgress}`)
             this._incompleteMeasure = this._currentMeasure;
             this._lastMeasure = null;
         }
 
         this._currentMeasure = null;
-        this._measureStart = null;
     }
 
     private beginMeasureBatch(){
-        //console.log("new batch");
+        //console.log(`new batch: ${this._concurrentCount}`);
         this._currentMeasure = {
-            itemCount: 0,
             totalItems: this._concurrentCount*10,
-            concurrentCount: this._concurrentCount
+            counter: new StreamCounter(this._progressCallback,this._timer)
         };
-        this._measureStart = this._timer.getTime();
     }
-
-
 }

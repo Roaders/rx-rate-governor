@@ -114,8 +114,8 @@ var governor = new RateGovernor(fileList);
 governor.observable
     .do(() => markLoadStarted())
     .flatMap(filePath => readFile(filePath))
-    .do(() => markLoadFinished())
     .do(() => governor.governRate())
+    .do(() => markLoadFinished())
     .subscribe(
         item => {},
         error => console.log(error),
