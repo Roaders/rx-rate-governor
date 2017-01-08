@@ -7,7 +7,11 @@ interface IPerformanceMeasure{
     counter: StreamCounter;
 }
 
-export class RateGovernor<T> implements IStreamCounterInfo{
+export interface IRateGovernorInfo extends IStreamCounterInfo{
+    readonly concurrentCount: number;
+}
+
+export class RateGovernor<T> implements IRateGovernorInfo{
 
     //  Constructor
 
