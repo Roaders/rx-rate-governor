@@ -20,6 +20,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
             .controlled();
 
         this._notStartedCounter = new StreamCounter(_progressCallback);
+        this._completeCounter = new StreamCounter(_progressCallback);
 
         this._downstreamObservable = this._controlled.do(() => this.handleRequestedItemReceived())
     }
@@ -27,6 +28,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
     //  Private Variables
 
     private _notStartedCounter: StreamCounter;
+    private _completeCounter: StreamCounter;
 
     private _controlled: Rx.ControlledObservable<T>;
     private _downstreamObservable: Rx.Observable<T>;
@@ -49,11 +51,11 @@ export class RateGovernor<T> implements IStreamCounterInfo{
     }
 
     get total(): number{
-        return this._measure ? this._measure.counter.total : 0;
+        return this._completeCounter.total
     }
 
     get complete(): number{
-        return this._measure ? this._measure.counter.complete : 0;
+        return this._completeCounter.complete;
     }
 
     private _concurrentCount = 1;
@@ -74,6 +76,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
         }
 
         this._currentMeasure.counter.itemComplete();
+        this._completeCounter.itemComplete();
 
        //console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
 
@@ -92,12 +95,14 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
     private handleItemFromSource(){
         this._notStartedCounter.newItem();
+        this._completeCounter.newItem();
 
         this.request();
     }
 
     private handleRequestedItemReceived(){
         if(!this._currentMeasure){
+            console.error("RateGovernor: Requested item received but no currentMeasure");
             throw new Error("RateGovernor: Requested item received but no currentMeasure");
         }
         this._notStartedCounter.itemComplete();
@@ -116,17 +121,21 @@ export class RateGovernor<T> implements IStreamCounterInfo{
         const requestCount = Math.min(this._concurrentCount - inProgress, batchRemainingItems - inProgress, this._notStartedCounter.inProgress);
 
         if(requestCount > 0){
-            //console.log(`Requesting ${requestCount}`)
+            //console.log(`Requesting ${requestCount}`);
             this._controlled.request(requestCount);
         } else if(batchRemainingItems === 0 || this._currentMeasure!.counter.inProgress === 0){
             //finished this batch of items, finalise measurements
             this.completeMeasureBatch();
-            this._controlled.request(this._concurrentCount);
+
+            if(this._notStartedCounter.inProgress > 0){
+                //console.log(`Requesting new concurrent count: ${requestCount} (not started: ${this._notStartedCounter.inProgress})`);
+                this.beginMeasureBatch();
+                this._controlled.request(this._concurrentCount);
+            }
         }
     }
 
     private completeMeasureBatch(){
-
         if(this._currentMeasure && this._currentMeasure.counter.complete >= this._currentMeasure.totalItems && this._currentMeasure.counter.inProgress === 0){
 
             //console.log("##################################################################################################");
@@ -151,12 +160,14 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
             //clear values for next batch
             this._lastMeasure = this._currentMeasure;
+            this._incompleteMeasure = null;
         } else {
             //console.log(`incomplete batch, saving incompleteMeasure: ${this._currentMeasure} complete: ${this._currentMeasure!.counter.complete} total: ${this._currentMeasure!.totalItems} inProgress: ${this._currentMeasure!.counter.inProgress}`)
             this._incompleteMeasure = this._currentMeasure;
+            this._lastMeasure = null;
         }
 
-        this.beginMeasureBatch();
+        this._currentMeasure = null;
     }
 
     private beginMeasureBatch(){

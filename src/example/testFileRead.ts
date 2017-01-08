@@ -54,7 +54,7 @@ function readFile(filePath: string): Rx.Observable<string>{
         .map(() => filePath);
 }
 
-function logProgress(newLine:boolean = true){
+function logProgress(newLine:boolean = false){
     const elapsed = new Date().getTime() - startTime.getTime();
     var perItem = Math.round(elapsed/loadedCount);
 
@@ -70,9 +70,9 @@ function logProgress(newLine:boolean = true){
 
     if(!newLine){
         message += "\r";
-        //process.stdout.write(message);
+        process.stdout.write(message);
     } else {
-        //console.log(message);
+        console.log(message);
     }
 
     lastMessageLength = message.length;
@@ -84,19 +84,13 @@ var loadingCount = 0;
 
 function markLoadStarted(){
     loadingCount++;
-    console.log(`markLoadStarted:: ${loadingCount}`);
     logProgress();
 }
 
 function markLoadFinished(){
     loadingCount--;
     loadedCount++;
-    console.log(`markLoadFinished: ${loadingCount}`);
     logProgress();
-
-    if(governor.inProgress != loadingCount){
-        console.log("DOES NOT MATCH: ${govornerRate!.inProgress} !!!!!!!!!!!!!!!!!!");
-    }
 }
 
 var startTime: Date;

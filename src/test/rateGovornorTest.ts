@@ -33,7 +33,7 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount <= 9; completeCount++){
-                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1},1);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount},1);
                 expect(emittedItems).toEqual(range(0,completeCount));
                 completeItems();
             }
@@ -54,7 +54,7 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1},1);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount},1);
                 completeItems();
             };
 
@@ -75,7 +75,7 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1},1);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount},1);
                 completeItems();
             };
 
@@ -96,7 +96,7 @@ describe("Rate Govornor",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
-                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount+1},1);
+                assertState({rate:{count: completeCount, msPerItem: 1000}, inProgress: 1, total: 80, complete: completeCount},1);
                 completeItems();
             };
 
@@ -133,7 +133,7 @@ describe("Rate Govornor",() => {
         });
     });
 
-    describe("when items not avaiable before subscribe", () =>{
+    describe("when items not available before subscribe", () =>{
 
         let source: Rx.Subject<number[]>;
 
@@ -147,12 +147,12 @@ describe("Rate Govornor",() => {
         it("when source emits items first item immediattely emmitted by govornor", () => {
             subscribe();
 
-            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 0, total: 80, complete: 0},1);
+            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 0, total: 0, complete: 0},1);
             expect(emittedItems).toEqual([]);
 
             source.onNext(range(0,80));
 
-            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 1, total: 80, complete: 1},1);
+            assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 1, total: 81, complete: 0},1);
             expect(emittedItems).toEqual([0]);
         });
 
@@ -178,9 +178,7 @@ describe("Rate Govornor",() => {
             };
 
             assertState({rate:{count: 8, msPerItem: 1000}, inProgress: 0, total: 16, complete: 16},1);
-
         });
-
     });
 
     function assertState(state: IStreamCounterInfo, concurrentCount: number){
@@ -192,6 +190,8 @@ describe("Rate Govornor",() => {
         expect(govornor.rate).toEqual(expectedRate);
         expect(govornor.inProgress).toEqual(state.inProgress);
         expect(govornor.concurrentCount).toEqual(concurrentCount);
+        expect(govornor.complete).toEqual(state.complete);
+        expect(govornor.total).toEqual(state.total);
     }
 
     function range(start: number, end: number): number[]{
