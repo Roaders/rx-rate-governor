@@ -22,16 +22,14 @@ describe("Rate Govornor",() => {
             govornor = new RateGovernor(source,undefined,timer);
         });
 
-        xit("should initally emit one item",() => {
-            console.log(`should initally emit one item`);
+        it("should initally emit one item",() => {
             subscribe();
 
             assertState({rate:{count: 0, msPerItem: NaN}, inProgress: 1, total: 80, complete: 0},1);
             expect(emittedItems).toEqual([0]);
-            console.log(`should initally emit one item COMPLETE: ${govornor.inProgress}`);
         });
 
-        xit("should emit one item for the first 10 complete items", () => {
+        it("should emit one item for the first 10 complete items", () => {
             subscribe();
 
             for(let completeCount = 0; completeCount <= 9; completeCount++){
@@ -41,7 +39,7 @@ describe("Rate Govornor",() => {
             }
         });
 
-        xit("when the 10th item is complete concurrent items should increase to 2", () => {
+        it("when the 10th item is complete concurrent items should increase to 2", () => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
@@ -73,7 +71,7 @@ describe("Rate Govornor",() => {
         });
 
 
-        xit("if items 10 - 20 complete at a slower rate than items 0 - 10 concurrecy will reduce to 1",() => {
+        it("if items 10 - 20 complete at a slower rate than items 0 - 10 concurrecy will reduce to 1",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
@@ -94,7 +92,7 @@ describe("Rate Govornor",() => {
         });
 
 
-        xit("if items 10 - 20 complete at the same rate than items 0 - 10 concurrecy will reduce to 1",() => {
+        it("if items 10 - 20 complete at the same rate than items 0 - 10 concurrecy will reduce to 1",() => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
@@ -114,7 +112,7 @@ describe("Rate Govornor",() => {
             expect(emittedItems).toEqual(range(0,30));
         });
 
-        xit("if small batches are faster concurrent count does not drop below 0", () => {
+        it("if small batches are faster concurrent count does not drop below 0", () => {
             subscribe();
 
             for(let completeCount = 0; completeCount < 10; completeCount++){
@@ -135,7 +133,7 @@ describe("Rate Govornor",() => {
         });
     });
 
-    xdescribe("when items not avaiable before subscribe", () =>{
+    describe("when items not avaiable before subscribe", () =>{
 
         let source: Rx.Subject<number[]>;
 
@@ -191,8 +189,8 @@ describe("Rate Govornor",() => {
             msPerItem: state.rate.count === 0 ? NaN : state.rate.msPerItem
         };
 
-        //expect(govornor.rate).toEqual(expectedRate);
-        //expect(govornor.inProgress).toEqual(state.inProgress);
+        expect(govornor.rate).toEqual(expectedRate);
+        expect(govornor.inProgress).toEqual(state.inProgress);
         expect(govornor.concurrentCount).toEqual(concurrentCount);
     }
 

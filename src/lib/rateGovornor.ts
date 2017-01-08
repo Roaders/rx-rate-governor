@@ -33,13 +33,15 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
     private _increasingCount: boolean = true;
 
+    private _incompleteMeasure: IPerformanceMeasure | null;
     private _lastMeasure: IPerformanceMeasure | null;
     private _currentMeasure: IPerformanceMeasure | null;
 
     //  Properties
 
     get rate(): IRate{
-        return this._measure ? this._measure.counter.rate : {count: 0, msPerItem: NaN};
+        let measure = this._measure ? this._measure : this._incompleteMeasure
+        return measure ? measure.counter.rate : {count: 0, msPerItem: NaN};
     }
 
     get inProgress(): number{
@@ -52,10 +54,6 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
     get complete(): number{
         return this._measure ? this._measure.counter.complete : 0;
-    }
-
-    get currentItemCount(): IStreamCounterInfo | null{
-        return this._measure ? this._measure.counter : null;
     }
 
     private _concurrentCount = 1;
@@ -77,7 +75,7 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
         this._currentMeasure.counter.itemComplete();
 
-       console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
+       //console.log(`Govorn: ${this._currentMeasure.counter.inProgress} in progress, ${this._concurrentCount} concurrent, ${this._notStartedCounter.inProgress} queued`)
 
        this.request();
     }
@@ -112,14 +110,15 @@ export class RateGovernor<T> implements IStreamCounterInfo{
             this.beginMeasureBatch();
         }
 
+        const inProgress = this._currentMeasure!.counter.inProgress;
         //work out how many items to request to maintain our number of concurrent items
         const batchRemainingItems = this._currentMeasure!.totalItems - this._currentMeasure!.counter.complete;
-        const requestCount = Math.min(this._concurrentCount - this._currentMeasure!.counter.inProgress, batchRemainingItems, this._notStartedCounter.inProgress);
+        const requestCount = Math.min(this._concurrentCount - inProgress, batchRemainingItems - inProgress, this._notStartedCounter.inProgress);
 
         if(requestCount > 0){
             //console.log(`Requesting ${requestCount}`)
             this._controlled.request(requestCount);
-        } else if(batchRemainingItems === 0 || this._notStartedCounter.inProgress === 0){
+        } else if(batchRemainingItems === 0 || this._currentMeasure!.counter.inProgress === 0){
             //finished this batch of items, finalise measurements
             this.completeMeasureBatch();
             this._controlled.request(this._concurrentCount);
@@ -128,10 +127,10 @@ export class RateGovernor<T> implements IStreamCounterInfo{
 
     private completeMeasureBatch(){
 
-        if(this._currentMeasure && this._currentMeasure.counter.complete >= this._currentMeasure!.totalItems && this._currentMeasure.counter.inProgress === 0){
+        if(this._currentMeasure && this._currentMeasure.counter.complete >= this._currentMeasure.totalItems && this._currentMeasure.counter.inProgress === 0){
 
-            console.log("##################################################################################################");
-            console.log(`Batch complete: ${this._currentMeasure.counter.complete}/${this._currentMeasure.counter.total} (progress: ${this._currentMeasure.counter.inProgress}) (${this._currentMeasure.counter.rate.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
+            //console.log("##################################################################################################");
+            //console.log(`Batch complete: ${this._currentMeasure.counter.complete}/${this._currentMeasure.counter.total} (progress: ${this._currentMeasure.counter.inProgress}) (${this._currentMeasure.counter.rate.msPerItem}ms/item) ${this._concurrentCount} concurrent`);
 
             const lastRate = this._lastMeasure ? this._lastMeasure.counter.rate : null;
             const currentRate = this._currentMeasure.counter.rate;
@@ -141,26 +140,27 @@ export class RateGovernor<T> implements IStreamCounterInfo{
                 (this._increasingCount && lastRate.msPerItem <= currentRate.msPerItem) || (!this._increasingCount && lastRate.msPerItem < currentRate.msPerItem)
             )){
                 this._increasingCount = !this._increasingCount;
-                console.log(`swapping direction. increasing: ${this._increasingCount}`);
+                //console.log(`swapping direction. increasing: ${this._increasingCount}`);
             }
 
             //update number of concurrent items
             this._concurrentCount = this._increasingCount ? this._concurrentCount+1 : this._concurrentCount-1;
             this._concurrentCount = Math.max(1,this._concurrentCount);
 
-            console.log(`new concurrent count: ${this._concurrentCount}`);
+            //console.log(`new concurrent count: ${this._concurrentCount}`);
 
             //clear values for next batch
             this._lastMeasure = this._currentMeasure;
         } else {
-            console.log(`incomplete batch, not saving`)
+            //console.log(`incomplete batch, saving incompleteMeasure: ${this._currentMeasure} complete: ${this._currentMeasure!.counter.complete} total: ${this._currentMeasure!.totalItems} inProgress: ${this._currentMeasure!.counter.inProgress}`)
+            this._incompleteMeasure = this._currentMeasure;
         }
 
         this.beginMeasureBatch();
     }
 
     private beginMeasureBatch(){
-        console.log(`new batch: ${this._concurrentCount}`);
+        //console.log(`new batch: ${this._concurrentCount}`);
         this._currentMeasure = {
             totalItems: this._concurrentCount*10,
             counter: new StreamCounter(this._progressCallback,this._timer)

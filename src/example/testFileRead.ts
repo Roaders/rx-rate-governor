@@ -89,14 +89,12 @@ function markLoadStarted(){
 }
 
 function markLoadFinished(){
-    const govornerRate = governor.currentItemCount;
-
     loadingCount--;
     loadedCount++;
     console.log(`markLoadFinished: ${loadingCount}`);
     logProgress();
 
-    if(govornerRate!.inProgress != loadingCount){
+    if(governor.inProgress != loadingCount){
         console.log("DOES NOT MATCH: ${govornerRate!.inProgress} !!!!!!!!!!!!!!!!!!");
     }
 }
