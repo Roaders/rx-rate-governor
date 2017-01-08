@@ -1,6 +1,6 @@
 {
   "name": "rx-rate-governor",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Library to help find optimal concurrent items for parallel tasks",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
