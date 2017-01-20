@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/Roaders/rx-rate-governor.svg?branch=master)](https://travis-ci.org/Roaders/rx-rate-governor)
+[![Known Vulnerabilities](https://snyk.io/test/github/snyk/goof/badge.svg)](https://snyk.io/test/github/snyk/goof)
+
 
 # rx-rate-governor
 Library to help find optimal concurrent items for parallel tasks
