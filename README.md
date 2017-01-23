@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/Roaders/rx-rate-governor.svg?branch=master)](https://travis-ci.org/Roaders/rx-rate-governor)
-[![Known Vulnerabilities](https://snyk.io/test/github/snyk/goof/badge.svg)](https://snyk.io/test/github/snyk/goof)
+[![Known Vulnerabilities](https://snyk.io/test/github/roaders/rx-rate-governor/badge.svg)](https://snyk.io/test/github/roaders/rx-rate-governor)
 
 
 # rx-rate-governor
