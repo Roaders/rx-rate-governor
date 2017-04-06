@@ -3,6 +3,8 @@
 
 
 # rx-rate-governor
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/Roaders/rx-rate-governor.svg)](https://greenkeeper.io/)
 Library to help find optimal concurrent items for parallel tasks
 
 This library attempts to help find the optimal rate in which to perform concurrent tasks.
