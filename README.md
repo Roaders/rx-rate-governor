@@ -1,10 +1,9 @@
 [![Build Status](https://travis-ci.org/Roaders/rx-rate-governor.svg?branch=master)](https://travis-ci.org/Roaders/rx-rate-governor)
 [![Known Vulnerabilities](https://snyk.io/test/github/roaders/rx-rate-governor/badge.svg)](https://snyk.io/test/github/roaders/rx-rate-governor)
-
+[![Greenkeeper badge](https://badges.greenkeeper.io/Roaders/rx-rate-governor.svg)](https://greenkeeper.io/)
 
 # rx-rate-governor
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/Roaders/rx-rate-governor.svg)](https://greenkeeper.io/)
 Library to help find optimal concurrent items for parallel tasks
 
 This library attempts to help find the optimal rate in which to perform concurrent tasks.
