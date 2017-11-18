@@ -33,7 +33,7 @@
   "dependencies": {
     "rx": "^4.1.0",
     "rx-node": "^1.0.2",
-    "stream-item-timer": "^3.0.0"
+    "stream-item-timer": "^4.0.0"
   },
   "devDependencies": {
     "node-env-file": "^0.1.8",
