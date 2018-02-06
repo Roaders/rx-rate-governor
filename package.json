@@ -40,6 +40,6 @@
     "typescript": "^2.0.10",
     "typings": "^2.0.0",
     "rx-http-ts": "^1.0.2",
-    "jasmine": "^2.5.2"
+    "jasmine": "^3.0.0"
   }
 }
